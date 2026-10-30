@@ -1,0 +1,609 @@
+% Artigo do projeto de extensão: priorização e roteirização de empilhadeiras com grafos dinâmicos.
+% Baseado no modelo abnTeX2 (ABNT NBR 6022:2003).
+% Compilar: pdflatex, bibtex, pdflatex, pdflatex (ver latex/README.md).
+
+\documentclass[
+	article,
+	11pt,
+	oneside,
+	a4paper,
+	english,
+	brazil,
+	sumario=tradicional
+	]{abntex2}
+
+% ---
+% Pacotes
+% ---
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{indentfirst}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{booktabs}			% Tabelas com linhas horizontais limpas
+\usepackage{amsmath}			% Equações
+\usepackage[alf]{abntex2cite}	% Citações padrão ABNT
+
+% ---
+% Dados da capa
+% ---
+\titulo{Priorização e roteirização de empilhadeiras em centros logísticos com grafos dinâmicos}
+\autor{%
+	Márcio Brener Cantuária Santos\thanks{Matrícula 239781. Engenharia da Computação, Fundação Mathias Machline.}
+	\and
+	Heitor de Medeiros Santos\thanks{Matrícula 239834. Engenharia da Computação, Fundação Mathias Machline.}}
+\local{Manaus}
+\data{2026}
+% Orientador: aparece logo abaixo da capa (ver \maketitle).
+\newcommand{\orientador}{Prof. Gabriel de Oliveira Araújo}
+
+% ---
+% Aparência do PDF
+% ---
+\definecolor{blue}{RGB}{41,5,195}
+\makeatletter
+\hypersetup{
+	pdftitle={\@title},
+	pdfauthor={Márcio Brener Cantuária Santos; Heitor de Medeiros Santos},
+	pdfsubject={Priorização e roteirização de empilhadeiras com grafos dinâmicos},
+	pdfcreator={LaTeX with abnTeX2},
+	pdfkeywords={grafos dinâmicos}{empilhadeiras}{logística}{simulação},
+	colorlinks=true,
+	linkcolor=blue,
+	citecolor=blue,
+	filecolor=magenta,
+	urlcolor=blue,
+	bookmarksdepth=4
+}
+\makeatother
+
+% ---
+% Margens e espaçamentos
+% ---
+\setlrmarginsandblock{3cm}{3cm}{*}
+\setulmarginsandblock{3cm}{3cm}{*}
+\checkandfixthelayout
+\setlength{\parindent}{1.3cm}
+\setlength{\parskip}{0.2cm}
+\SingleSpacing
+
+\begin{document}
+
+\frenchspacing
+
+% ----------------------------------------------------------
+% ELEMENTOS PRÉ-TEXTUAIS
+% ----------------------------------------------------------
+\maketitle
+
+\begin{center}
+	Orientador: \orientador
+\end{center}
+
+\begin{resumoumacoluna}
+ Em centros logísticos, a armazenagem de paletes por empilhadeiras ocorre sem
+ priorização das tarefas. Como a empilhadeira precisa parar para posicionar,
+ elevar e guardar o palete, o trecho da rua onde ela opera fica bloqueado para
+ os demais operadores, o que gera esperas e congestionamento, inclusive para
+ materiais de baixo giro. Este trabalho propõe um algoritmo baseado em grafos
+ dinâmicos que, a cada evento (nova tarefa, entrada ou saída de empilhadeira em
+ uma rua), define a ordem de armazenagem e a rota de cada operador. A prioridade
+ de cada tarefa combina o giro do material, a posição de destino e a ocupação
+ atual da rua, com pesos ajustáveis, e é limitada por uma regra de precedência
+ por profundidade, na qual o material de destino mais fundo é armazenado
+ primeiro. Um simulador por passos de tempo compara a ordem de chegada com o
+ algoritmo, medindo tempo de espera, distância percorrida e número de
+ bloqueios. Trata-se de um protótipo, avaliado apenas por simulação em um
+ layout genérico, sem aplicação em um centro logístico real. Os resultados
+ preliminares mostram melhora no tempo de ciclo dos materiais de maior giro,
+ mas a regra de precedência, isoladamente, não reduziu a espera total por
+ bloqueio, o que motiva a previsão de conflitos de saída como próxima etapa.
+
+ \vspace{\onelineskip}
+
+ \noindent
+ \textbf{Palavras-chave}: grafos dinâmicos. empilhadeiras. logística.
+ priorização de tarefas. simulação.
+\end{resumoumacoluna}
+
+% ----------------------------------------------------------
+% ELEMENTOS TEXTUAIS
+% ----------------------------------------------------------
+\textual
+
+% ----------------------------------------------------------
+\section{Introdução}
+% ----------------------------------------------------------
+
+Em um centro logístico, depois que o palete é montado na área de recebimento,
+o operador de empilhadeira o busca e o armazena na posição de estoque
+correspondente. Em geral, não existe priorização dessas tarefas de armazenagem:
+cada operador atende o que lhe é designado, na ordem em que as tarefas surgem.
+Essa etapa integra o conjunto de operações de um armazém, que inclui
+recebimento, armazenagem, separação de pedidos e expedição
+\cite{gu2007}.
+
+Para armazenar, a empilhadeira precisa se posicionar, elevar o palete, guardá-lo
+e liberar a rua. Durante esse tempo, ela ocupa o trecho onde está parada e
+impede a passagem dos demais. Como essa situação se repete muitas vezes ao dia
+e envolve vários operadores simultaneamente, formam-se esperas e
+congestionamento na mesma rua, mesmo quando as tarefas em disputa são de
+materiais de baixo giro.
+
+Este trabalho propõe tratar o problema com um grafo dinâmico, recalculado a cada
+evento, que devolve a ordem de prioridade das tarefas e a rota de cada
+operador. O foco do trabalho é o problema de congestionamento e o algoritmo
+que o trata. O que se apresenta é um protótipo, avaliado por simulação, sem
+aplicação em operação real.
+
+O restante do texto apresenta o problema (Seção~\ref{sec:problema}), os
+objetivos (Seção~\ref{sec:objetivos}), a fundamentação teórica
+(Seção~\ref{sec:teoria}), a metodologia (Seção~\ref{sec:metodologia}), os
+resultados preliminares (Seção~\ref{sec:resultados}) e as considerações finais,
+com limitações e trabalhos futuros (Seção~\ref{sec:consideracoes}).
+
+% ----------------------------------------------------------
+\section{Definição do problema}
+\label{sec:problema}
+% ----------------------------------------------------------
+
+Considera-se um centro logístico com docas de recebimento, uma área de
+recebimento (pulmão) e ruas de armazenagem com racks nos dois lados. Cada rua
+é acessada por um único lado, ou seja, é um beco sem saída, e pertence a um
+depósito, que corresponde a uma categoria de material (por exemplo,
+medicamentos, produtos de higiene e cuidados pessoais, grandes volumes).
+
+Cada material pertence a uma categoria e a uma curva ABC, e possui endereço
+fixo, composto por depósito, rua, posição e nível. A categoria define o
+depósito e a rua; a curva define o nível (curva A no nível mais baixo). Como o
+destino de cada tarefa já é conhecido pelo material, o algoritmo não escolhe
+endereço: ele decide apenas \emph{em que ordem} cada tarefa é executada e
+\emph{por qual rota}.
+
+O bloqueio ocorre da seguinte forma: a empilhadeira parada operando ocupa o
+trecho onde está, e quem precisa passar por ele, para entrar ou para sair,
+espera. Quanto mais alto o nível do endereço, maior o tempo de elevação e,
+portanto, maior o tempo em que a rua fica bloqueada. Duas ou mais operações
+podem estar na mesma rua ao mesmo tempo, desde que quem está parado não
+bloqueie quem ainda precisa passar. Isso impõe uma ordem natural: se a tarefa
+da frente da rua é executada antes da tarefa do fundo, a empilhadeira da frente
+trava o acesso ao fundo; se o fundo é executado primeiro, as duas operações
+coexistem sem espera.
+
+% ----------------------------------------------------------
+\section{Objetivos}
+\label{sec:objetivos}
+% ----------------------------------------------------------
+
+\subsection{Objetivo geral}
+
+Desenvolver e demonstrar um algoritmo baseado em grafos dinâmicos que defina a
+ordem de prioridade e a rota das tarefas de armazenagem de empilhadeiras,
+considerando o giro dos materiais e a posição de destino, para reduzir esperas
+e bloqueios de corredor em um centro logístico.
+
+\subsection{Objetivos específicos}
+
+\begin{alineas}
+	\item modelar um layout genérico de centro logístico (docas, pátio, ruas e
+	posições) como um grafo com pesos dinâmicos;
+	\item definir um índice de prioridade das tarefas combinando o giro do
+	material e a posição de destino no depósito;
+	\item implementar o algoritmo de priorização e roteirização para múltiplos
+	operadores concorrendo pela mesma rua;
+	\item disponibilizar uma demonstração visual, de apoio, que execute o
+	algoritmo e mostre a ordem de armazenagem sugerida;
+	\item comparar, por simulação, o cenário sem priorização (ordem de chegada)
+	com o cenário com o algoritmo, quanto a tempo de espera, distância
+	percorrida e número de bloqueios.
+\end{alineas}
+
+% ----------------------------------------------------------
+\section{Fundamentação teórica}
+\label{sec:teoria}
+% ----------------------------------------------------------
+
+\subsection{Operações de armazém e política de armazenagem}
+
+\citeonline{gu2007} organizam a literatura sobre operações de armazém em
+torno das atividades de recebimento, armazenagem, separação de pedidos e
+expedição, e discutem os problemas de decisão de cada uma. A tarefa tratada
+neste trabalho está na transição entre o recebimento e a armazenagem: levar o
+palete da área de recebimento até o seu endereço de estoque.
+
+A literatura de separação de pedidos é revisada por \citeonline{dekoster2007},
+que discutem o projeto e o controle dessa atividade, incluindo o layout do
+armazém, as políticas de armazenagem e a roteirização dos operadores. Esses
+temas são próximos dos que aparecem aqui, mas aplicados ao deslocamento de
+empilhadeiras para guardar paletes, e não à coleta de itens.
+
+A relação entre o giro dos materiais e o desempenho do armazém tem origem no
+estudo de \citeonline{hausman1976}, que comparam atribuição aleatória de
+endereços, atribuição por giro e atribuição por classes de giro em sistemas
+automáticos de armazenagem, e mostram que regras baseadas em giro reduzem o
+tempo de deslocamento do equipamento. Neste trabalho, o
+giro (curva ABC) já determina o nível do endereço, e por isso ele entra no
+algoritmo como critério de \emph{prioridade} da tarefa, e não como regra de
+escolha de endereço.
+
+No contexto brasileiro, \citeonline{silva2017} combinam a curva ABC com
+simulação computacional em um armazém de centro de distribuição, usando o giro
+dos produtos como parâmetro para organizar o depósito. Os autores destacam que
+os cenários simulados mostram impactos em cada processo que seriam difíceis de
+observar no ambiente real sem perturbar a operação, o mesmo motivo pelo qual
+este trabalho recorre à simulação.
+
+\subsection{Bloqueio e congestionamento em corredores}
+
+\citeonline{parikh2009} propõem modelos analíticos para estimar o bloqueio
+entre operadores em corredores de separação de pedidos e mostram que a largura
+do corredor influencia o quanto os operadores se atrapalham. No problema aqui
+estudado o bloqueio tem origem parecida, a presença de um veículo parado que
+impede a passagem de outro, mas ocorre em ruas de acesso único, nas quais quem
+está no fundo depende de quem está na frente para sair.
+
+\subsection{Caminho mínimo e grafos dinâmicos}
+
+O cálculo de rotas neste trabalho usa o algoritmo de \citeonline{dijkstra1959}
+para encontrar o caminho de menor custo entre dois nós de um grafo com arestas
+ponderadas. Como as condições do armazém mudam a cada evento, o grafo precisa
+ser reavaliado ao longo do tempo.
+
+\citeonline{ramalingam1996} estudam a complexidade dos problemas em grafos
+dinâmicos, nos quais a solução deve ser atualizada depois de mudanças no grafo,
+em vez de recalculada do zero. Em um caso de roteirização dentro de armazém na
+literatura nacional, \citeonline{bonassa2011} buscam a rota de separação manual
+que minimiza a distância percorrida, com um sistema de apoio à decisão em
+planilha. O foco deles é a rota que minimiza a distância, e não a disputa entre
+operadores por trechos de rua. A implementação deste protótipo recalcula a rota
+a cada decisão, o que é suficiente para o grafo pequeno usado, e a atualização
+incremental fica como possibilidade de evolução.
+
+\subsection{Despacho e roteirização de veículos}
+
+A revisão de \citeonline{leanh2006} sobre veículos guiados automaticamente
+(AGV) cobre projeto do caminho, escalonamento, roteirização e resolução de
+deadlocks. Empilhadeiras conduzidas por operadores não são AGVs, mas o problema
+de decidir qual veículo atende qual tarefa e por qual caminho, evitando que
+veículos se travem, é análogo ao que se trata aqui.
+
+\citeonline{qiu2002} classificam os algoritmos de escalonamento e roteirização
+de AGVs e distinguem os dois problemas. O algoritmo proposto neste trabalho
+trata os dois de forma conjunta: o escalonamento define a \emph{ordem} das
+tarefas e a roteirização define o \emph{caminho} de cada operador.
+
+Entre as abordagens clássicas, \citeonline{egbelu1984} caracterizam regras
+heurísticas de despacho de AGVs em um ambiente de oficina (\emph{job shop}).
+A política de ordem de chegada usada como referência neste trabalho é uma regra
+de despacho simples desse tipo, e o índice de prioridade proposto é uma regra
+mais elaborada, que incorpora giro, posição e ocupação.
+
+\subsection{Síntese}
+
+Nas fontes revisadas, os temas de armazenagem por giro, bloqueio em corredores,
+roteirização em grafos e despacho de veículos aparecem em separado
+\cite{gu2007,hausman1976,parikh2009,leanh2006,silva2017,bonassa2011}. Não encontramos nelas o
+tratamento conjunto do problema aqui descrito: tarefas de armazenagem em ruas
+sem saída, com prioridade que combina giro, profundidade e ocupação atual. Essa
+combinação é o que o algoritmo proposto busca explorar. Esta síntese se limita
+às fontes consultadas e não pretende ser uma revisão sistemática.
+
+% ----------------------------------------------------------
+\section{Metodologia}
+\label{sec:metodologia}
+% ----------------------------------------------------------
+
+\subsection{Natureza e etapas da pesquisa}
+
+Trata-se de uma pesquisa aplicada, de abordagem quantitativa, baseada em
+modelagem e simulação. O algoritmo e o simulador foram implementados como
+protótipo em JavaScript, sem dependências externas. A simulação foi escolhida
+porque permite comparar duas políticas sobre exatamente o mesmo conjunto de
+tarefas, sem interferir em uma operação real \cite{law2000,silva2017}. O trabalho seguiu
+as etapas abaixo.
+
+\begin{alineas}
+	\item definição do problema e das suposições do modelo;
+	\item modelagem do layout genérico como grafo;
+	\item definição do índice de prioridade e da regra de precedência;
+	\item implementação do algoritmo de decisão e do simulador;
+	\item verificação do funcionamento por testes automatizados;
+	\item execução de cenários e comparação das duas políticas.
+\end{alineas}
+
+\subsection{Suposições do modelo}
+
+As suposições adotadas na primeira versão são as seguintes. Elas ainda precisam
+de validação em uma operação real.
+
+\begin{alineas}
+	\item cada rua é um beco sem saída, com acesso apenas pela frente; a travessa
+	de fundo não está no grafo;
+	\item os dois lados da rua contam como o mesmo trecho para efeito de
+	bloqueio;
+	\item apenas a empilhadeira \emph{parada operando} (posicionando, elevando e
+	guardando) bloqueia o trecho; quem está em movimento passa;
+	\item cada operador transporta um palete por viagem e retorna ao recebimento
+	depois de guardá-lo;
+	\item o endereço de cada material é fixo; categoria define a rua e curva
+	define o nível;
+	\item os tempos de percurso e de operação são determinísticos.
+\end{alineas}
+
+\subsection{Dados de entrada}
+
+O catálogo de materiais tem 24 itens, 6 por rua, sendo dois de cada curva (A, B
+e C). A rua depende da categoria do material, o nível depende da curva e a
+posição e o lado dentro da rua são sorteados uma única vez com semente fixa,
+de modo que o endereço de um material nunca muda entre execuções.
+
+As tarefas de armazenagem são geradas a partir desse catálogo. Para cada tarefa,
+sorteia-se a rua com probabilidades 0,5, 0,2, 0,2 e 0,1 para as ruas R1 a R4,
+escolhe-se um material da rua com igual probabilidade e sorteia-se o instante
+de criação entre 0 e 60~s. A concentração na primeira rua é intencional, pois é
+nela que o congestionamento aparece. Cada cenário é identificado por uma
+semente, e o gerador pseudoaleatório com semente garante que as duas políticas
+recebam exatamente as mesmas tarefas \cite{law2000}.
+
+\subsection{Modelo do grafo}
+
+O layout é representado por um grafo não direcionado com 38 nós e 37 arestas. Os
+nós são o ponto de recebimento, os cinco cruzamentos da travessa frontal e as
+32 posições de armazenagem (8 por rua). As arestas são trechos de corredor,
+com distância e tempo de percurso (velocidade de 2~m/s). Cada rua é um ramo que
+sai de um único cruzamento de entrada e termina na posição mais funda.
+
+A rota de cada operador é calculada pelo algoritmo de \citeonline{dijkstra1959}.
+O custo de entrar em um nó é o tempo da aresta somado ao tempo restante da
+empilhadeira que estiver parada operando naquele nó, o que torna o peso
+dinâmico. A implementação percorre linearmente os nós ainda abertos para
+escolher o próximo, com custo proporcional ao quadrado do número de nós, o que
+é desprezível para 38 nós. Como o grafo recalcula a rota a cada decisão, ele
+acompanha as mudanças de ocupação ao longo da simulação, ao contrário de uma
+solução estática \cite{ramalingam1996}.
+
+Uma observação importante: com a travessa de fundo fora do grafo, ele é uma
+árvore, e existe um único caminho entre quaisquer dois nós. Por isso, neste
+layout, o peso dinâmico não altera \emph{qual} caminho é percorrido; ele altera
+o custo previsto do caminho, que entra na prioridade da tarefa. Rotas
+alternativas só passam a existir se o layout tiver ciclos, por exemplo com a
+travessa de fundo.
+
+\subsection{Tempos de operação}
+
+O tempo em que a empilhadeira permanece parada, ocupando o trecho, é dado por
+\begin{equation}
+	t_{op}(i) = t_0 + t_n \cdot n(i),
+\end{equation}
+em que $t_0$ é o tempo base de posicionar e guardar o palete, $t_n$ é o tempo
+de elevação por nível e $n(i)$ é o nível do endereço da tarefa $i$. O tempo de
+presença da tarefa dentro da rua inclui o deslocamento de ida e volta até a
+posição $p(i)$:
+\begin{equation}
+	t_{rua}(i) = \frac{2 \, p(i) \, d}{v} + t_{op}(i),
+\end{equation}
+sendo $d$ a distância entre posições consecutivas e $v$ a velocidade. O valor
+máximo $t_{rua}^{max}$ corresponde à posição mais funda no nível mais alto. Com
+os parâmetros adotados (Tabela~\ref{tab:parametros}), $t_{rua}^{max} = 70$~s.
+
+\subsection{Índice de prioridade}
+
+Para cada tarefa $i$ que disputa a mesma rua, o índice de prioridade é
+\begin{equation}
+	P(i) = w_1 \, G(i) + w_2 \, Pos(i) - w_3 \, E(i),
+\end{equation}
+em que:
+\begin{itemize}
+	\item $G(i) \in [0,1]$ é o giro normalizado do material, obtido da curva
+	ABC (A $=1$, B $=0{,}5$, C $=0{,}1$), seguindo a ideia de classificar os
+	materiais por giro \cite{hausman1976};
+	\item $Pos(i) = 1 - t_{rua}(i)/t_{rua}^{max}$ valoriza as tarefas que
+	ocupam a rua por menos tempo, o que reflete a profundidade da posição e o
+	nível de elevação;
+	\item $E(i) = \min(1, e(i)/e_{ref})$ é a penalidade dinâmica pela espera
+	prevista $e(i)$, calculada como a soma do tempo restante das empilhadeiras
+	paradas no caminho da tarefa, com $e_{ref} = 40$~s como espera de
+	referência;
+	\item $w_1$, $w_2$ e $w_3$ são pesos parametrizáveis.
+\end{itemize}
+
+Há uma tensão a declarar: priorizar apenas o alto giro pode atrasar tarefas
+rápidas, e priorizar apenas tarefas curtas pode deixar o alto giro esperando.
+Os pesos controlam esse equilíbrio, e a simulação mostra o efeito de cada
+escolha. Como a curva define o nível, $G(i)$ e $Pos(i)$ são correlacionados:
+a curva A fica no nível mais baixo, com elevação curta, e a curva C fica no
+nível mais alto, bloqueando a rua por mais tempo.
+
+\subsection{Precedência por profundidade}
+
+Em cada rua, somente a tarefa de destino mais fundo está liberada para
+execução. Assim, quem armazena perto da entrada depois não bloqueia quem ainda
+precisa chegar ao fundo. O índice $P(i)$ atua como critério de escolha entre as
+tarefas liberadas de diferentes ruas e como desempate. Essa regra pode ser
+desligada para fins de comparação, o que permite isolar o efeito dela do efeito
+do giro.
+
+\subsection{Algoritmo de decisão}
+
+Sempre que um operador fica ocioso e existe tarefa na fila, o algoritmo executa
+os passos a seguir. A decisão é tomada a cada evento, sobre o estado atual das
+empilhadeiras.
+
+\begin{alineas}
+	\item monta o conjunto de tarefas liberadas, aplicando a regra de
+	precedência por profundidade (ou toda a fila, se a regra estiver desligada);
+	\item para cada tarefa liberada, calcula $G(i)$, $Pos(i)$ e a espera prevista
+	$e(i)$ pelo estado atual das empilhadeiras que estão operando;
+	\item calcula $P(i)$ e escolhe a tarefa de maior valor, mantendo a mais
+	antiga em caso de empate;
+	\item atribui a tarefa ao operador, que pega o palete no recebimento (5~s);
+	\item calcula a rota pelo recebimento até o endereço, com o peso dinâmico
+	de ocupação, e inicia o deslocamento;
+	\item ao chegar, o operador fica parado operando durante $t_{op}(i)$, tempo em
+	que bloqueia o trecho; depois retorna ao recebimento e fica ocioso.
+\end{alineas}
+
+A política de referência, ``ordem de chegada'', pula os passos 1 a 3 e sempre
+escolhe a tarefa mais antiga da fila.
+
+\subsection{Simulação}
+
+A simulação avança por passos de tempo de 0,5~s, com limite de 20000~s por
+execução, e termina quando todas as tarefas foram guardadas. Cada operador
+passa pelos estados \emph{ocioso}, \emph{pegando}, \emph{indo},
+\emph{operando} e \emph{voltando}. Quando o próximo nó do caminho está ocupado
+por uma empilhadeira operando, o operador espera, e o tempo de espera é
+acumulado por operador e por rua. Cada vez que um operador passa a esperar,
+conta-se um bloqueio.
+
+As duas políticas são executadas sobre cópias das mesmas tarefas, e a única
+diferença entre as execuções é a regra de escolha da tarefa. As métricas
+coletadas estão na Tabela~\ref{tab:metricas}.
+
+\begin{table}[htb]
+	\centering
+	\caption{Métricas coletadas em cada simulação}
+	\label{tab:metricas}
+	\begin{tabular}{lp{8cm}}
+		\toprule
+		Métrica & Definição \\
+		\midrule
+		Tempo total & instante em que a última tarefa é guardada \\
+		Espera por bloqueio & soma, entre os operadores, do tempo parado esperando um trecho ocupado \\
+		Distância & soma das distâncias percorridas por todos os operadores \\
+		Bloqueios & número de vezes que um operador passou a esperar \\
+		Ciclo médio & média de (instante de guarda $-$ instante de criação) das tarefas \\
+		Ciclo médio, curva A & mesmo cálculo, apenas para tarefas de curva A \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Os parâmetros adotados são apresentados na Tabela~\ref{tab:parametros}; todos
+são configuráveis.
+
+\begin{table}[htb]
+	\centering
+	\caption{Parâmetros do layout genérico e da simulação}
+	\label{tab:parametros}
+	\begin{tabular}{lr}
+		\toprule
+		Parâmetro & Valor \\
+		\midrule
+		Ruas de armazenagem & 4 \\
+		Posições por rua & 8 \\
+		Distância entre posições & 3~m \\
+		Velocidade da empilhadeira & 2~m/s \\
+		Tempo para pegar o palete & 5~s \\
+		Tempo base de operação ($t_0$) & 10~s \\
+		Tempo de elevação por nível ($t_n$) & 12~s \\
+		Níveis por curva (A, B, C) & 1, 2, 3 \\
+		Operadores & 5 \\
+		Tarefas por cenário & 24 \\
+		Passo de tempo & 0,5~s \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{Verificação e planejamento dos experimentos}
+
+Para verificar se o simulador se comporta como o modelo descreve, foram escritos
+sete testes automatizados, que conferem o endereço fixo por categoria e curva,
+a rota até o fundo da rua, o efeito do peso dinâmico, a regra de precedência e
+um cenário mínimo em que a ordem frente-antes-do-fundo gera bloqueio e a ordem
+fundo-antes-da-frente não gera. A verificação confere se o modelo foi
+implementado corretamente, e é diferente de validar se ele representa uma
+operação real \cite{law2000}; esta segunda etapa não foi feita.
+
+Como os resultados dependem das tarefas sorteadas, cada configuração é
+executada em 30 cenários, com sementes de 1 a 30, e reporta-se a média. Os
+experimentos comparam três configurações: ordem de chegada, algoritmo com os
+pesos padrão ($w_1 = w_2 = w_3 = 0{,}5$) e regra de precedência, e algoritmo
+sem a regra de precedência. Variar os pesos e o número de operadores fica para
+a continuação do trabalho.
+
+\subsection{Demonstração}
+
+Como apoio, o mesmo algoritmo e a mesma simulação foram ligados a uma
+visualização 3D e a um painel de indicadores. Essas interfaces apenas exibem o
+resultado e não fazem parte da contribuição do trabalho.
+
+% ----------------------------------------------------------
+\section{Resultados preliminares}
+\label{sec:resultados}
+% ----------------------------------------------------------
+
+Os resultados abaixo correspondem à média de 30 cenários, com 5 operadores e 24
+tarefas por cenário, concentradas principalmente na primeira rua. Os valores
+foram obtidos por simulação em layout genérico, com a primeira versão do
+simulador, e não com dados de uma operação real.
+
+\begin{table}[htb]
+	\centering
+	\caption{Comparação entre as políticas (média de 30 cenários)}
+	\label{tab:resultados}
+	\begin{tabular}{lccc}
+		\toprule
+		Indicador & Ordem de chegada & Algoritmo & Sem precedência \\
+		\midrule
+		Espera por bloqueio (s) & 318 & 399 & 324 \\
+		Ciclo médio, curva A (s) & 193 & 157 & 98 \\
+		Tempo total (s) & 430 & --- & 446 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Com os pesos padrão ($w_1 = w_2 = w_3 = 0{,}5$) e a regra de precedência, o
+algoritmo \emph{aumentou} a espera por bloqueio (399~s contra 318~s na ordem de
+chegada). Em contrapartida, o tempo médio de ciclo da curva A caiu de 193~s para
+157~s, e o ciclo médio geral ficou praticamente igual. Ao desligar a
+precedência e priorizar apenas pelo índice, o ciclo da curva A caiu para 98~s e
+a espera ficou em 324~s, equivalente à ordem de chegada, porém o tempo total
+subiu de 430~s para 446~s.
+
+Esses números indicam que a regra ``fundo primeiro'', isoladamente, não reduz a
+espera total: a empilhadeira que armazena no fundo fica presa na saída enquanto
+a da frente ainda está operando. O ganho observado vem da priorização do giro,
+que reduz o tempo de ciclo dos materiais de curva A.
+
+% ----------------------------------------------------------
+\section{Considerações finais}
+\label{sec:consideracoes}
+% ----------------------------------------------------------
+
+Este trabalho apresentou um algoritmo de priorização e roteirização de
+empilhadeiras baseado em grafos dinâmicos e uma simulação para compará-lo com a
+ordem de chegada. Os resultados preliminares
+mostram que o critério de giro melhora o ciclo dos materiais de maior prioridade,
+mas que a precedência por profundidade, como foi modelada, não basta para reduzir
+os bloqueios.
+
+\subsection{Limitações}
+
+Este trabalho é um protótipo e não houve aplicação no mundo real. O layout
+genérico mostra que o método é coerente, mas não mede o ganho real de um
+centro logístico específico. Além disso, o modelo adota suposições que ainda
+precisam de validação: ruas sem saída pelo fundo (a travessa de fundo não está
+no grafo); os dois lados da rua contam como o mesmo trecho para efeito de
+bloqueio; apenas a empilhadeira parada bloqueia o trecho; um palete por viagem;
+e tempos fixos de operação. Como o grafo do layout é uma árvore, o peso dinâmico
+não permite escolher rotas alternativas neste protótipo.
+
+\subsection{Trabalhos futuros}
+
+O próximo passo é fazer o algoritmo prever o conflito de \emph{saída}: a tarefa
+da frente só começaria se terminasse antes de a empilhadeira do fundo precisar
+sair. Em seguida, deve-se reavaliar a regra de precedência. Também ficam como
+trabalho futuro a variação dos pesos e do número de operadores, a inclusão de
+rotas alternativas no layout, a confirmação do tipo de estrutura de armazenagem
+(porta-paletes seletivo ou estrutura profunda) e a aplicação com dados reais de
+um centro logístico.
+
+% ----------------------------------------------------------
+% REFERÊNCIAS
+% ----------------------------------------------------------
+\postextual
+\bibliography{referencias}
+
+\end{document}
