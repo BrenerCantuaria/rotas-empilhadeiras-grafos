@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Armazenagem</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb;
+    --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10);
+    --accent: #2a78d6;       /* com priorização (destaque) */
+    --neutral: #898781;      /* operação atual (contexto) */
+    --good: #006300; --bad: #d03b3b;
+    --track: #cde2fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19;
+      --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+      --accent: #3987e5; --neutral: #898781;
+      --good: #0ca30c; --bad: #e66767; --track: #184f95;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19;
+    --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+    --accent: #3987e5; --neutral: #898781;
+    --good: #0ca30c; --bad: #e66767; --track: #184f95;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 2px; }
+  h2 { font-size: 15px; margin: 0 0 2px; }
+  .sub { color: var(--ink2); margin: 0 0 18px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .nota { color: var(--ink2); font-size: 12.5px; margin: 2px 0 10px; }
+
+  /* barra de controles */
+  .controles { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; margin-bottom: 16px; }
+  .grupo { display: flex; flex-direction: column; gap: 4px; }
+  .grupo > span { font-size: 12px; color: var(--ink2); }
+  .seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; }
+  .seg button { background: transparent; color: var(--ink); border: 0; padding: 7px 12px; cursor: pointer; font: inherit; border-right: 1px solid var(--axis); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  input[type=number] { width: 78px; padding: 6px; background: var(--surface); color: var(--ink); border: 1px solid var(--axis); border-radius: 6px; font: inherit; }
+  input[type=range] { width: 150px; }
+  label.check { display: flex; gap: 6px; align-items: center; max-width: 260px; }
+
+  /* destaque + KPIs */
+  .topo { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+  .heroi .rotulo { color: var(--ink2); }
+  .heroi .valor { font-size: 56px; font-weight: 650; line-height: 1.1; margin: 4px 0; }
+  .heroi .valor small { font-size: 20px; font-weight: 500; color: var(--ink2); }
+  .leitura ul { list-style: none; margin: 8px 0 0; padding: 0; }
+  .leitura li { padding: 7px 0; border-top: 1px solid var(--grid); display: flex; gap: 8px; }
+  .leitura li:first-child { border-top: 0; }
+  .selo { font-weight: 650; white-space: nowrap; }
+  .melhor { color: var(--good); } .pior { color: var(--bad); } .igual { color: var(--ink2); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile .rotulo { color: var(--ink2); font-size: 13px; }
+  .tile .valor { font-size: 26px; font-weight: 600; margin: 2px 0; }
+  .tile .valor small { font-size: 13px; font-weight: 500; color: var(--ink2); }
+  .tile .delta { font-size: 12.5px; min-height: 18px; }
+  .tile .dica { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  /* gráficos */
+  .graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .grande { grid-column: 1 / -1; }
+  .legenda { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 6px; color: var(--ink2); font-size: 13px; }
+  .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .area { position: relative; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); }
+  svg text.v { fill: var(--ink2); }
+  #dica { position: fixed; pointer-events: none; z-index: 5; background: var(--surface); color: var(--ink); border: 1px solid var(--axis);
+          border-radius: 8px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.18); display: none; max-width: 260px; }
+  details { margin-top: 8px; color: var(--ink2); font-size: 12.5px; }
+  summary { cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  .rolagem { overflow-x: auto; }
+  .carregando { opacity: .45; transition: opacity .15s; }
+  footer { color: var(--ink2); font-size: 12.5px; margin-top: 18px; }
+  .botao { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; cursor: pointer; font: inherit; }
+
+  /* Modo tela cheia (F11): só o essencial, indicadores grandes, tudo numa tela */
+  body.tv main { max-width: none; padding: 10px 14px 12px; }
+  body.tv h1 { font-size: 20px; }
+  body.tv .sub, body.tv footer, body.tv details, body.tv .nota, body.tv .avancado, body.tv #resumoCard, body.tv .tile .dica { display: none !important; }
+  body.tv .controles { padding: 8px 12px; margin-bottom: 10px; }
+  body.tv .card { padding: 12px; }
+  body.tv .topo { margin-bottom: 10px; gap: 10px; }
+  body.tv .heroi .valor { font-size: clamp(48px, 9vh, 104px); }
+  body.tv .heroi .rotulo, body.tv .leitura h2 { font-size: clamp(14px, 2vh, 20px); }
+  body.tv .leitura li { font-size: clamp(14px, 2.3vh, 21px); }
+  body.tv .tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  body.tv .tile .rotulo { font-size: clamp(12px, 1.7vh, 16px); }
+  body.tv .tile .valor { font-size: clamp(24px, 4.4vh, 46px); }
+  body.tv .graficos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 0; }
+  body.tv .grande { grid-column: auto; }
+  body.tv .graficos h2 { font-size: clamp(13px, 1.9vh, 18px); }
+  @media (max-width: 760px) { .topo, .graficos { grid-template-columns: 1fr; } .heroi .valor { font-size: 44px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Painel de Armazenagem</h1>
+  <p class="sub">Compare a operação atual (paletes guardados na ordem em que chegam) com a operação priorizada, e acompanhe o que muda no dia das empilhadeiras.</p>
+
+  <div class="controles card">
+    <div class="grupo"><span>O que mostrar</span>
+      <div class="seg" id="modo">
+        <button data-v="chegada" aria-pressed="false">Operação atual</button>
+        <button data-v="algoritmo" aria-pressed="false">Com priorização</button>
+        <button data-v="comparar" aria-pressed="true">Comparar as duas</button>
+      </div>
+    </div>
+    <div class="grupo"><span>Período</span>
+      <div class="seg" id="visao">
+        <button data-v="dia" aria-pressed="true">Um dia</button>
+        <button data-v="media" aria-pressed="false">Média de 30 dias</button>
+      </div>
+    </div>
+    <div class="grupo avancado" id="grpDia"><span>Dia simulado</span><input id="dia" type="number" min="1" value="1"></div>
+    <div class="grupo avancado"><span>Operadores</span><input id="nOps" type="number" min="1" max="8" value="5"></div>
+    <div class="grupo avancado"><span>Paletes no dia</span><input id="nTarefas" type="number" min="4" max="80" value="24"></div>
+    <div class="grupo avancado"><span>Peso dado ao giro do material: <b id="giroTxt">50%</b></span>
+      <input id="giro" type="range" min="0" max="100" step="5" value="50"></div>
+    <label class="check avancado"><input id="fundo" type="checkbox" checked> Guardar primeiro o endereço mais ao fundo da rua</label>
+    <div class="grupo"><span>Modo painel de TV</span><button id="telaCheia" class="botao">Tela cheia (F11)</button></div>
+  </div>
+
+  <div id="conteudo">
+    <div class="topo">
+      <div class="card heroi" id="heroi"></div>
+      <div class="card leitura" id="leitura"></div>
+    </div>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="graficos">
+      <div class="card grande">
+        <h2>Paletes guardados ao longo do dia</h2>
+        <p class="nota">Quanto mais cedo a linha chega ao total, mais rápido o dia termina.</p>
+        <div class="legenda" id="legLinha"></div>
+        <div class="area" id="gLinha"></div>
+        <details><summary>Ver como tabela</summary><div class="rolagem" id="tLinha"></div></details>
+      </div>
+      <div class="card">
+        <h2>Tempo para guardar, por giro do material</h2>
+        <p class="nota">Da chegada do palete até ele estar no endereço (em minutos). Menor é melhor.</p>
+        <div class="legenda" id="legGiro"></div>
+        <div class="area" id="gGiro"></div>
+        <details><summary>Ver como tabela</summary><div class="rolagem" id="tGiro"></div></details>
+      </div>
+      <div class="card">
+        <h2>Onde se perde tempo esperando a rua liberar</h2>
+        <p class="nota">Minutos de empilhadeira parada esperando, por rua do depósito.</p>
+        <div class="legenda" id="legRua"></div>
+        <div class="area" id="gRua"></div>
+        <details><summary>Ver como tabela</summary><div class="rolagem" id="tRua"></div></details>
+      </div>
+    </div>
+
+    <div class="card" id="resumoCard">
+      <h2>Resumo completo</h2>
+      <div class="rolagem" id="resumo"></div>
+    </div>
+  </div>
+
+  <footer>Os números vêm de uma simulação com um layout genérico e tempos estimados (velocidade, tempo de elevação por nível). Eles mostram se o método faz sentido, mas não medem o ganho de um centro logístico específico. Com dados reais, o painel passa a refletir a operação do dia a dia.</footer>
+</main>
+<div id="dica"></div>
+
+<script src="../dados/layout.js"></script>
+<script src="../dados/materiais.js"></script>
+<script src="../algoritmo/grafo.js"></script>
+<script src="../algoritmo/prioridade.js"></script>
+<script src="../simulacao/simulador.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
