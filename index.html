@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rota operacional de empilhadeiras com grafos</title>
+<style>
+  :root { --fundo: #f4f6f8; --texto: #1d2733; --suave: #5b6b7b; --cartao: #ffffff; --borda: #d8dee4; --destaque: #1f5fbf; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fundo: #14181d; --texto: #e6ebf0; --suave: #9aa8b6; --cartao: #1d232a; --borda: #2d3640; --destaque: #6ea3ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 8px; }
+  p { margin: 0 0 16px; color: var(--suave); }
+  .cartoes { display: grid; gap: 12px; margin-top: 28px; }
+  a.cartao { display: block; background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 16px 18px; color: inherit; text-decoration: none; }
+  a.cartao:hover, a.cartao:focus-visible { border-color: var(--destaque); outline: none; }
+  a.cartao strong { display: block; color: var(--destaque); margin-bottom: 2px; }
+  a.cartao span { color: var(--suave); font-size: .95rem; }
+  footer { margin-top: 32px; font-size: .9rem; color: var(--suave); }
+  footer a { color: var(--destaque); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Rota operacional de empilhadeiras com base em grafos dinâmicos</h1>
+  <p>Protótipo que define a ordem de prioridade e a rota das tarefas de armazenagem quando vários operadores disputam a mesma rua. Avaliado por simulação em um layout genérico, sem aplicação em operação real.</p>
+
+  <div class="cartoes">
+    <a class="cartao" href="dashboard/">
+      <strong>Painel para o coordenador</strong>
+      <span>Compara a operação atual com a priorização: tempo de espera, distância e paletes por hora.</span>
+    </a>
+    <a class="cartao" href="site3d/">
+      <strong>Visualização 3D</strong>
+      <span>Mostra o centro logístico e a ordem de armazenagem sugerida, com os pesos ajustáveis ao vivo.</span>
+    </a>
+    <a class="cartao" href="algoritmo/testes.html">
+      <strong>Testes do algoritmo</strong>
+      <span>Executa no navegador os testes de rota, precedência e simulação.</span>
+    </a>
+  </div>
+
+  <footer>
+    Código-fonte: <a href="https://github.com/BrenerCantuaria/rotas-empilhadeiras-grafos">github.com/BrenerCantuaria/rotas-empilhadeiras-grafos</a>
+  </footer>
+</main>
+</body>
+</html>
