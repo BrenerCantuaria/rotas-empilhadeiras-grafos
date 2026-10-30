@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotas de Empilhadeiras - MVP 3D</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1f27; font: 13px system-ui, sans-serif; color: #e8eaf0; }
+  #cena { position: fixed; inset: 0; }
+  #painel { position: fixed; top: 10px; left: 10px; width: 290px; max-height: calc(100% - 20px); overflow-y: auto;
+            background: rgba(20,24,32,.92); border: 1px solid #333b4a; border-radius: 8px; padding: 12px; }
+  #fila { position: fixed; top: 10px; right: 10px; width: 270px; max-height: calc(100% - 20px); overflow-y: auto;
+          background: rgba(20,24,32,.92); border: 1px solid #333b4a; border-radius: 8px; padding: 12px; }
+  h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #9aa4b8; }
+  label { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; gap: 8px; }
+  input[type=range] { width: 130px; }
+  input[type=number], select { width: 120px; background: #11151c; color: inherit; border: 1px solid #333b4a; border-radius: 4px; padding: 3px; }
+  button { background: #2f6fed; color: #fff; border: 0; border-radius: 4px; padding: 6px 10px; margin: 4px 4px 0 0; cursor: pointer; }
+  button.sec { background: #3a4357; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  td, th { padding: 2px 4px; text-align: right; border-bottom: 1px solid #2a3140; }
+  td:first-child, th:first-child { text-align: left; }
+  .bom { color: #4cd08a; } .ruim { color: #ff7b72; }
+  .item { display: flex; gap: 6px; align-items: center; padding: 3px 0; border-bottom: 1px solid #2a3140; }
+  .tag { display: inline-block; min-width: 18px; text-align: center; border-radius: 3px; color: #111; font-weight: 700; padding: 0 4px; }
+  .A { background: #4cd08a; } .B { background: #f0b429; } .C { background: #ff7b72; }
+  .peq { color: #9aa4b8; font-size: 12px; }
+  hr { border: 0; border-top: 1px solid #333b4a; margin: 10px 0; }
+</style>
+</head>
+<body>
+<div id="cena"></div>
+
+<div id="painel">
+  <h3>Simulação</h3>
+  <label>Política
+    <select id="politica">
+      <option value="algoritmo">Algoritmo (prioridade)</option>
+      <option value="chegada">Ordem de chegada</option>
+    </select>
+  </label>
+  <label>Operadores <input id="nOps" type="number" min="1" max="8" value="5"></label>
+  <label>Tarefas <input id="nTarefas" type="number" min="4" max="60" value="24"></label>
+  <label>Cenário (semente) <input id="semente" type="number" min="1" value="1"></label>
+  <label>Velocidade
+    <select id="velocidade"><option value="1">1x</option><option value="3">3x</option><option value="8" selected>8x</option><option value="20">20x</option></select>
+  </label>
+  <button id="reiniciar">Reiniciar</button>
+  <button id="pausar" class="sec">Pausar</button>
+  <button id="comparar" class="sec">Comparar políticas</button>
+
+  <hr>
+  <h3>Pesos do índice P(i)</h3>
+  <label>w1 giro <input id="w1" type="range" min="0" max="1" step="0.05" value="0.5"><span id="w1v">0.50</span></label>
+  <label>w2 posição <input id="w2" type="range" min="0" max="1" step="0.05" value="0.5"><span id="w2v">0.50</span></label>
+  <label>w3 rua ocupada <input id="w3" type="range" min="0" max="1" step="0.05" value="0.5"><span id="w3v">0.50</span></label>
+
+  <hr>
+  <h3>Ao vivo</h3>
+  <div id="vivo"></div>
+
+  <div id="resultado"></div>
+  <p class="peq">Arraste para girar, roda do mouse para aproximar. Verde = curva A, amarelo = B, vermelho = C.
+    Empilhadeira vermelha = esperando rua; laranja = operando (bloqueia o trecho).</p>
+</div>
+
+<div id="fila">
+  <h3>Ordem sugerida</h3>
+  <div id="filaLista" class="peq">sem tarefas na fila</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../dados/layout.js"></script>
+<script src="../dados/materiais.js"></script>
+<script src="../algoritmo/grafo.js"></script>
+<script src="../algoritmo/prioridade.js"></script>
+<script src="../simulacao/simulador.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
