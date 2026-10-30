@@ -22,6 +22,7 @@
 \usepackage{color}
 \usepackage{graphicx}
 \usepackage{microtype}
+\usepackage{ragged2e}			% Permite forçar texto justificado (\justifying)
 \usepackage{booktabs}			% Tabelas com linhas horizontais limpas
 \usepackage{amsmath}			% Equações
 \usepackage[alf]{abntex2cite}	% Citações padrão ABNT
@@ -30,13 +31,9 @@
 % Dados da capa
 % ---
 \titulo{Priorização e roteirização de empilhadeiras em centros logísticos com grafos dinâmicos}
-\autor{%
-	Márcio Brener Cantuária Santos\thanks{Matrícula 239781. Engenharia da Computação, Fundação Mathias Machline.}
-	\and
-	Heitor de Medeiros Santos\thanks{Matrícula 239834. Engenharia da Computação, Fundação Mathias Machline.}}
 \local{Manaus}
 \data{2026}
-% Orientador: aparece logo abaixo da capa (ver \maketitle).
+% Orientador: aparece logo abaixo das afiliações (ver cabeçalho do artigo).
 \newcommand{\orientador}{Prof. Gabriel de Oliveira Araújo}
 
 % ---
@@ -50,11 +47,11 @@
 	pdfsubject={Priorização e roteirização de empilhadeiras com grafos dinâmicos},
 	pdfcreator={LaTeX with abnTeX2},
 	pdfkeywords={grafos dinâmicos}{empilhadeiras}{logística}{simulação},
-	colorlinks=true,
-	linkcolor=blue,
-	citecolor=blue,
-	filecolor=magenta,
-	urlcolor=blue,
+	colorlinks=true,		% links continuam clicáveis, mas em preto (a ABNT não pede cor)
+	linkcolor=black,
+	citecolor=black,
+	filecolor=black,
+	urlcolor=black,
 	bookmarksdepth=4
 }
 \makeatother
@@ -76,11 +73,21 @@
 % ----------------------------------------------------------
 % ELEMENTOS PRÉ-TEXTUAIS
 % ----------------------------------------------------------
-\maketitle
-
+% Cabeçalho no modelo da instituição: logo, título, autores numerados e afiliações com e-mail.
+% O logo (faculdade_matias_machline.png) deve ficar na mesma pasta deste arquivo.
 \begin{center}
-	Orientador: \orientador
+	\IfFileExists{faculdade_matias_machline.png}{\includegraphics[height=2.4cm]{faculdade_matias_machline.png}\par\vspace{0.8cm}}{}
+	{\bfseries\Large Priorização e roteirização de empilhadeiras em centros logísticos com grafos dinâmicos\par}
+	\vspace{0.6cm}
+	{\bfseries Márcio Brener Cantuária Santos\textsuperscript{1}, Heitor de Medeiros Santos\textsuperscript{2}\par}
+	\vspace{0.4cm}
+	{\small
+	\textsuperscript{1}Faculdade Matias Machline (FMM), Manaus-AM, Brasil; \textit{marcio.239781@fmm.org.br}\\
+	\textsuperscript{2}Faculdade Matias Machline (FMM), Manaus-AM, Brasil; \textit{heitor.239834@fmm.org.br}\par}
+	\vspace{0.3cm}
+	{\small Orientador: \orientador\par}
 \end{center}
+\vspace{0.5cm}
 
 \begin{resumoumacoluna}
  Em centros logísticos, a armazenagem de paletes por empilhadeiras ocorre sem
@@ -112,6 +119,10 @@
 % ELEMENTOS TEXTUAIS
 % ----------------------------------------------------------
 \textual
+
+% Texto do corpo sempre justificado, com o recuo de parágrafo do restante do documento.
+\setlength{\JustifyingParindent}{1.3cm}
+\justifying
 
 % ----------------------------------------------------------
 \section{Introdução}
@@ -284,7 +295,7 @@ mais elaborada, que incorpora giro, posição e ocupação.
 
 Nas fontes revisadas, os temas de armazenagem por giro, bloqueio em corredores,
 roteirização em grafos e despacho de veículos aparecem em separado
-\cite{gu2007,hausman1976,parikh2009,leanh2006,silva2017,bonassa2011}. Não encontramos nelas o
+\cite{bonassa2011,gu2007,hausman1976,leanh2006,parikh2009,silva2017}. Não encontramos nelas o
 tratamento conjunto do problema aqui descrito: tarefas de armazenagem em ruas
 sem saída, com prioridade que combina giro, profundidade e ocupação atual. Essa
 combinação é o que o algoritmo proposto busca explorar. Esta síntese se limita
