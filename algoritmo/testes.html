@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Testes do algoritmo</title>
+<pre id="saida"></pre>
+<script>
+  // Mostra o console na página para conferir os testes sem Node.
+  const saida = document.getElementById('saida');
+  const log = (...a) => (saida.textContent += a.join(' ') + '\n');
+  console.log = log;
+  window.onerror = (m, u, l) => log('ERRO:', m, 'linha', l);
+</script>
+<script src="../dados/layout.js"></script>
+<script src="../dados/materiais.js"></script>
+<script src="grafo.js"></script>
+<script src="prioridade.js"></script>
+<script src="../simulacao/simulador.js"></script>
+<script src="testes.js"></script>
